@@ -1,0 +1,10 @@
+# general
+*~
+
+# python
+*.pyc
+__pycache__
+pip-selfcheck.json
+
+# vitualenv
+.virtualenv
