@@ -1,5 +1,5 @@
 import os
-import json
+import datetime
 import boto3
 
 
@@ -35,9 +35,9 @@ def lambda_handler(event, context):
 
         res = s3_client.put_object(Bucket=s3_bucket_name,
                                    Key=str(s3_bucket_prefix)
-                                   + str(db_log['LastWritten'])
+                                   + datetime.datetime.fromtimestamp(float(db_log['LastWritten'])/1000).strftime("%Y%m%d%H%M%S")
                                    + "-"
-                                   + str(db_log['LogFileName']),
+                                   + str(db_log['LogFileName']).replace("/", "_"),
                                    Body=str.encode(log_file_data))
         print(res)
         # res = s3_client.put_object(Bucket=s3_bucket_name, Key=s3_fetch_manage_file,
