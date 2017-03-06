@@ -50,7 +50,7 @@
           rds_instance_name: "{{ item }}"
           rds_log_prefix: "{{ type }}/mysql-{{ type }}"
           s3_bucket_name: "{{ s3_bucket_name }}"
-          s3_bucket_prefix: "rds3/{{ item }}/{{ type }}/"
+          s3_bucket_prefix: "rds/{{ item }}/{{ type }}/"
       with_items: "{{ rds_instances }}"
 
     - cloudwatchevent_rule:
