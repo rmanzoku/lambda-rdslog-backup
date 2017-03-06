@@ -1,0 +1,63 @@
+- hosts: localhost
+  become: no
+  connection: local
+  gather_facts: no
+  vars:
+    rds_instances:
+      - ""
+    s3_bucket_name: "{{ BUCKET_NAME }}"
+    account_id: "{{ ACCOUNT_ID }}"
+    type: general # or slowquery
+    region: "{{ AWS_REGION }}"
+  tasks:
+    - local_action: archive format=zip path="lambda_function.py" dest="deploy/lambda_function.py.zip"
+
+    # - name: Create IAM role
+    #   iam:
+    #     iam_type: role
+    #     name: lambda-rdslog-backup
+    #     state: present
+    #     trust_policy:
+    #       Version: '2012-10-17'
+    #       Statement:
+    #         - Action: sts:AssumeRole
+    #           Effect: Allow
+    #           Principal:
+    #             Service: lambda.amazonaws.com
+    #         - Action: sts:AssumeRole
+    #           Effect: Allow
+    #           Principal:
+    #             Service: events.amazonaws.com
+
+    - name: Attach policy
+      iam_policy:
+        iam_type: role
+        iam_name: lambda-rdslog-backup
+        state: present
+        policy_name: lambda-rdslog-backup
+        policy_json: "{{ lookup( 'template', 'policy.json.j2') }}"
+
+    - name: Create lambda function
+      lambda:
+        name: '{{ item }}-{{ type }}-log-collector'
+        state: present
+        zip_file: 'deploy/lambda_function.py.zip'
+        runtime: 'python2.7'
+        timeout: '60'
+        role: 'arn:aws:iam::{{ account_id }}:role/lambda-rdslog-backup'
+        handler: 'ambda_function.lambda_handler'
+        environment_variables:
+          rds_instance_name: "{{ item }}"
+          rds_log_prefix: "{{ type }}/mysql-{{ type }}"
+          s3_bucket_name: "{{ s3_bucket_name }}"
+          s3_bucket_prefix: "rds3/{{ item }}/{{ type }}/"
+      with_items: "{{ rds_instances }}"
+
+    - cloudwatchevent_rule:
+        name: lambda-rdslog-backup-houry
+        schedule_expression: "rate(60 minutes)"
+        description: Run lambda-rdslog-backup hourly
+        targets:
+          - id: "{{ item }}-{{ type }}-log-collector"
+            arn: "arn:aws:lambda:{{ region }}:{{ account_id }}:function:{{ item }}-{{ type }}-log-collector"
+      with_items: "{{ rds_instances }}"
