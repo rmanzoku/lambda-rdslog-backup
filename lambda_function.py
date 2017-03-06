@@ -31,7 +31,7 @@ def lambda_handler(event, context):
             s3_client.head_object(Bucket=s3_bucket_name,
                                   Key=keyname)
         except botocore.exceptions.ClientError as e:
-            if e.response['Error']['Code'] == "404":
+            if e.response['Error']['Code'] == "403":
                 pass
             else:
                 raise
