@@ -1,6 +1,9 @@
+#!/usr/bin/env python2.7
+# coding:utf-8
 import os
-import datetime
+from datetime import datetime as dt
 import boto3
+import botocore
 
 
 def lambda_handler(event, context):
@@ -9,7 +12,6 @@ def lambda_handler(event, context):
     rds_log_prefix = os.environ.get('rds_log_prefix')
     s3_bucket_name = os.environ.get('s3_bucket_name')
     s3_bucket_prefix = os.environ.get('s3_bucket_prefix', "")
-    s3_fetch_manage_file = s3_bucket_prefix + os.environ.get('s3_fetch_manage_file_name', "")
 
     region = os.environ.get('region', "ap-northeast-1")
 
@@ -23,9 +25,24 @@ def lambda_handler(event, context):
         if db_log["LogFileName"].endswith(".log") is True:
             continue
 
+        keyname = str(s3_bucket_prefix) + dt.fromtimestamp(float(db_log['LastWritten'])/1000).strftime('%Y%m%d%H%M%S') + "-" + str(db_log['LogFileName']).replace("/", "_")
+
+        try:
+            s3_client.head_object(Bucket=s3_bucket_name,
+                                  Key=keyname)
+        except botocore.exceptions.ClientError as e:
+            if e.response['Error']['Code'] == "404":
+                pass
+            else:
+                raise
+        else:
+            print("Already exist ", keyname)
+            continue
+
         log_file = rds_client.download_db_log_file_portion(DBInstanceIdentifier=rds_instance_name,
                                                            LogFileName=db_log['LogFileName'],
                                                            Marker='0')
+
         log_file_data = log_file['LogFileData']
         while log_file['AdditionalDataPending']:
             log_file = rds_client.download_db_log_file_portion(DBInstanceIdentifier=rds_instance_name,
@@ -34,10 +51,7 @@ def lambda_handler(event, context):
             log_file_data += log_file['LogFileData']
 
         res = s3_client.put_object(Bucket=s3_bucket_name,
-                                   Key=str(s3_bucket_prefix)
-                                   + datetime.datetime.fromtimestamp(float(db_log['LastWritten'])/1000).strftime("%Y%m%d%H%M%S")
-                                   + "-"
-                                   + str(db_log['LogFileName']).replace("/", "_"),
+                                   Key=keyname,
                                    Body=str.encode(log_file_data))
         print(res)
         # res = s3_client.put_object(Bucket=s3_bucket_name, Key=s3_fetch_manage_file,
