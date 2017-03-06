@@ -6,6 +6,8 @@
 deploy.sh
 deploy.retry
 
+deploy.yml
+
 # python
 *.pyc
 __pycache__
