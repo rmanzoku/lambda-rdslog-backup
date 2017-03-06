@@ -1,6 +1,11 @@
 # general
 *~
 
+# deploy
+*.zip
+deploy.sh
+deploy.retry
+
 # python
 *.pyc
 __pycache__

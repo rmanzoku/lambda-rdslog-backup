@@ -1,0 +1,22 @@
+- hosts: localhost
+  become: no
+  connection: local
+  gather_facts: no
+  tasks:
+    - local_action: archive format=zip path=lambda_function.py dest=lambda_function.py.zip
+
+    - name: looped creation
+      lambda:
+        name: '{{ item.name }}'
+        state: present
+        zip_file: '{{ item.zip_file }}'
+        runtime: 'python2.7'
+        role: '{{ IAM }}'
+        handler: 'lambda_function.lambda_handler'
+        environment_variables: '{{ item.env_vars }}'
+      with_items:
+        - name: HelloWorld
+          zip_file: lambda_function.py.zip
+          env_vars:
+            rds_instance_name: "rdsssss"
+            s3_bucket_name: "log"
